@@ -1,18 +1,9 @@
 # app/main.py
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
-import httpx
-import os
-import base64
-import os
-import io
-import json
-import re
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
+import os, io, json, re, openai
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
-import openai
 
 app = FastAPI(
     title="Plagiarism Detector Tool",
@@ -22,7 +13,7 @@ app = FastAPI(
 
 # ── Azure Form Recognizer setup ───────────────────────────────────────────────
 FR_ENDPOINT = "https://aifordocumentscanner.services.ai.azure.com/"
-FR_KEY = ""
+FR_KEY = "6nFe2HqtZAPM33dBa84upbMI640ntmjZfS471GcDEx9RJfBm72ljJQQJ99BGACYeBjFXJ3w3AAAAACOGuKFV"
 
 if not FR_ENDPOINT or not FR_KEY:
     raise RuntimeError(
@@ -36,40 +27,12 @@ doc_client = DocumentAnalysisClient(
 # ── Azure OpenAI setup ────────────────────────────────────────────────────────
 openai.api_type = "azure"
 openai.api_base = "https://aifordocumentscanner.openai.azure.com/"
-openai.api_key = ""
+openai.api_key = "A5KozsbQDA6AxLe2e4aolXk74oOiSh8zQG40DDdALEUW9JEaxHiLJQQJ99BGACYeBjFXJ3w3AAAAACOGjqLr"
 openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
 DEPLOYMENT_NAME = "gpt-4o" # e.g. "gpt-4o"
 
 if not openai.api_base or not openai.api_key or not DEPLOYMENT_NAME:
-    raise RuntimeError(
-        "Missing AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, or AZURE_OPENAI_DEPLOYMENT")
-
-
-# URL of your analyze endpoint
-# ANALYZE_URL = os.getenv("ANALYZE_URL", "http://localhost:8000/analyze-pdf/")
-
-@app.post("/upload-pdf/")
-async def upload_pdf(file : UploadFile = File(...)):
-    # only PDF allowed
-    if file.content_type != "application/pdf":
-        raise HTTPException(
-            status_code=415, detail="Only PDF files are supported.")
-
-    # Read file bytes
-    data = await file.read()
-    b64 = base64.b64encode(data).decode("utf-8")
-    # # Forward to analyze endpoint
-    # files = {"file": (file.filename, data, file.content_type)}
-    # async with httpx.AsyncClient() as client:
-    #     resp = await client.post(ANALYZE_URL, files=files)
-
-    # Return whatever the analyzer returns
-    try:
-        return JSONResponse(status_code=200, content={"message": b64})
-    except ValueError:
-        # fallback if not JSON
-        return JSONResponse(status_code=500, content={"message": "Something went wrong!"})
-
+    raise RuntimeError("Missing credentials or url")
 
 @app.post("/analyze-pdf/")
 async def analyze_pdf(file: UploadFile = File(...)):
@@ -86,7 +49,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
         stream
     )
     result = poller.result()
-    context = result.content
+    context = ''.join([line.content for page in result.pages for line in page.lines])
     
     if not context:
         raise HTTPException(
@@ -113,7 +76,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
             {"role": "system", "content": system_prompt},
             {"role": "user",   "content": user_prompt}
         ],
-        max_tokens=2000,
+        max_tokens=3000,
         temperature=0.2,
     )
     raw = resp.choices[0].message.content
@@ -127,7 +90,7 @@ async def analyze_pdf(file: UploadFile = File(...)):
     except json.JSONDecodeError:
         raise HTTPException(
             status_code=502,
-            detail="LLM did not return valid JSON. Response was:\n" + raw
+            detail="Failed"
         )
 
     return JSONResponse(status_code=200, content=quiz)
