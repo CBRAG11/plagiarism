@@ -18,13 +18,18 @@ if "correct_answers" not in st.session_state:
 uploaded_file = st.file_uploader("Choose a PDF file", type="pdf")
 
 if uploaded_file is not None and st.session_state.questions_data is None:
+    file_size = round(len(uploaded_file.getvalue()) / 1024, 2)
     # Show file info
     file_details = {
         "Filename": uploaded_file.name,
         "FileType": uploaded_file.type,
-        "FileSize (KB)": round(len(uploaded_file.getvalue()) / 1024, 2)
+        "FileSize (KB)": file_size
     }
     st.write("### File Details", file_details)
+
+    if file_size > 1000:
+        st.error(f"❌ Please upload a file less than 1MB. Your file is {file_size}KB")
+        st.stop()
 
     try:
         uploaded_file.seek(0)
