@@ -4,6 +4,9 @@ from fastapi.responses import JSONResponse
 import os, io, json, re, openai
 from azure.ai.formrecognizer import DocumentAnalysisClient
 from azure.core.credentials import AzureKeyCredential
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(
     title="Plagiarism Detector Tool",
@@ -12,8 +15,8 @@ app = FastAPI(
 )
 
 # ── Azure Form Recognizer setup ───────────────────────────────────────────────
-FR_ENDPOINT = "https://aifordocumentscanner.services.ai.azure.com/"
-FR_KEY = "6nFe2HqtZAPM33dBa84upbMI640ntmjZfS471GcDEx9RJfBm72ljJQQJ99BGACYeBjFXJ3w3AAAAACOGuKFV"
+FR_ENDPOINT = os.getenv("FR_ENDPOINT")
+FR_KEY = os.getenv("FR_KEY")
 
 if not FR_ENDPOINT or not FR_KEY:
     raise RuntimeError(
@@ -26,8 +29,8 @@ doc_client = DocumentAnalysisClient(
 
 # ── Azure OpenAI setup ────────────────────────────────────────────────────────
 openai.api_type = "azure"
-openai.api_base = "https://aifordocumentscanner.openai.azure.com/"
-openai.api_key = "A5KozsbQDA6AxLe2e4aolXk74oOiSh8zQG40DDdALEUW9JEaxHiLJQQJ99BGACYeBjFXJ3w3AAAAACOGjqLr"
+openai.api_base = os.getenv("OPENAI_BASE")
+openai.api_key = os.getenv("OPENAI_KEY")
 openai.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2023-05-15")
 DEPLOYMENT_NAME = "gpt-4o" # e.g. "gpt-4o"
 
